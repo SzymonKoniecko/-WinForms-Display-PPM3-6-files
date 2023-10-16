@@ -1,4 +1,6 @@
-﻿namespace Zad2
+﻿using System.ComponentModel;
+
+namespace Zad2
 {
     public partial class Main : Form
     {
@@ -10,15 +12,25 @@
         private Label pixelInfoLabel;
         private Bitmap image;
         private Bitmap originalImage;
+        private Bitmap onCreatingBitmap;
+        private PictureBox loadingBox;
+        private BackgroundWorker loadingWorker;
+        private bool completedLoading = false;
         public Main()
         {
             this.Size = new Size(1200, 720);
             // Inicjalizacja PictureBox
+
             pictureBox = new PictureBox();
             pictureBox.Dock = DockStyle.Fill;
             pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox.MouseMove += PictureBox_MouseMove;
-
+            loadingBox = new PictureBox();
+            Image imageGif = Image.FromFile("Fountain.gif");
+            loadingBox.Dock = DockStyle.Bottom;
+            loadingBox.SizeMode = PictureBoxSizeMode.CenterImage;
+            loadingBox.Visible = true;
+            loadingBox.Enabled = true;
             // Inicjalizacja TrackBar do zmiany powiększenia
             zoomInBtn = new Button();
             zoomInBtn.Dock = DockStyle.Bottom;
@@ -36,30 +48,30 @@
             pixelInfoLabel = new Label();
             pixelInfoLabel.Dock = DockStyle.Bottom;
             pixelInfoLabel.TextAlign = ContentAlignment.MiddleCenter;
-            image = new Bitmap("C:\\Users\\Szymon\\Desktop\\test.jpg");
-            //pictureBox.Image = image;
             pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
             pictureBox.Visible = true;
+            pictureBox.Enabled = true;
             // Dodanie kontrolki PictureBox do formularza
             this.Controls.Add(pictureBox);
             this.Controls.Add(zoomInBtn);
             this.Controls.Add(zoomOutBtn);
             this.Controls.Add(zoomBackToNormalBtn);
             this.Controls.Add(pixelInfoLabel);
+            this.Controls.Add(loadingBox);
             this.DoubleBuffered = true;
             // Inicjalizacja przycisku "Wybierz plik"
             openFileBtn = new Button();
             openFileBtn.Text = "Wybierz plik";
             openFileBtn.Click += openFileButton_Click;
             openFileBtn.Dock = DockStyle.Top;
-            Controls.Add(openFileBtn);
+            this.Controls.Add(openFileBtn);
 
-            // Inicjalizacja kontrolki PictureBox
-            pictureBox = new PictureBox();
-            pictureBox.Dock = DockStyle.Fill;
-            Controls.Add(pictureBox);
+            loadingWorker = new BackgroundWorker();
+            loadingWorker.WorkerReportsProgress = false;
+            loadingWorker.WorkerSupportsCancellation = false;
+            loadingWorker.DoWork += new DoWorkEventHandler(DisplayLoadingGif);
+            loadingWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(HideLoadingGif);
         }
-
 
     }
 }
