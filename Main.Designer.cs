@@ -77,7 +77,30 @@ namespace Zad2
 
         private void ChooseJPEGFile(object? sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "JPEG Image|*.jpg";
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    string filePath = dialog.FileName;
+
+                    try
+                    {
+                        using (Bitmap loadedImage = new Bitmap(filePath))
+                        {
+                            pictureBox.Width = loadedImage.Width;
+                            pictureBox.Height = loadedImage.Height;
+                            pictureBox.Image = new Bitmap(loadedImage);
+                            image = loadedImage;
+                            originalImage = loadedImage;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error while loading the image: " + ex.Message + ex.StackTrace);
+                    }
+                }
+            }
         }
         private void SaveJPEGFile(object? sender, EventArgs e)
         {
