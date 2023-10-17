@@ -14,15 +14,25 @@ namespace Zad2
         int width = 1;
         int height = 1;
         string filePath = "";
-        private void PictureBox_MouseMove(object sender, MouseEventArgs e)
+        private void PixelViewerByMouseMove(object sender, MouseEventArgs e)
         {
             if (image == null) return;
 
-            int x = e.X * image.Width / pictureBox.Width;
-            int y = e.Y * image.Height / pictureBox.Height;
+            if (pictureBox.Image != null)
+            {
+                int x = e.X * pictureBox.Image.Width / pictureBox.Width;
+                int y = e.Y * pictureBox.Image.Height / pictureBox.Height;
 
-            Color pixelColor = ((Bitmap)image).GetPixel(x, y);
-            pixelInfoLabel.Text = $"Piksel ({x}, {y}) - R:{pixelColor.R}, G:{pixelColor.G}, B:{pixelColor.B}";
+                if (x >= 0 && x < pictureBox.Image.Width && y >= 0 && y < pictureBox.Image.Height)
+                {
+                    Color pixelColor = ((Bitmap)pictureBox.Image).GetPixel(x, y);
+                    pixelViewerLabel.Text = $"Pixel ({x}, {y}) - R:{pixelColor.R}, G:{pixelColor.G}, B:{pixelColor.B}";
+                }
+                else
+                {
+                    pixelViewerLabel.Text = "Out of range";
+                }
+            }
         }
         private void ChoosePpmFile(object sender, EventArgs e)
         {
@@ -264,7 +274,80 @@ namespace Zad2
         }
         private void LoadPPM6(string filePath)
         {
-            throw new NotImplementedException();
+            try
+            {
+                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                {
+                    using (BinaryReader reader = new BinaryReader(fs))
+                    {
+                        byte[] header = new byte[15];
+                        reader.Read(header, 0, 15);
+                        string headerStr = System.Text.Encoding.ASCII.GetString(header);
+
+                        if (headerStr.StartsWith("P6"))
+                        {
+                            int width = 0, height = 0, maxValue = 0;
+                            while (width == 0 || height == 0 || maxValue == 0)
+                            {
+                                char c = (char)reader.ReadByte();
+                                while (Char.IsWhiteSpace(c))
+                                {
+                                    c = (char)reader.ReadByte();
+                                }
+
+                                if (Char.IsDigit(c))
+                                {
+                                    string number = c.ToString();
+                                    while (Char.IsDigit((char)reader.PeekChar()))
+                                    {
+                                        number += (char)reader.ReadByte();
+                                    }
+                                    if (width == 0)
+                                    {
+                                        width = int.Parse(number);
+                                    }
+                                    else if (height == 0)
+                                    {
+                                        height = int.Parse(number);
+                                    }
+                                    else if (maxValue == 0)
+                                    {
+                                        maxValue = int.Parse(number);
+                                    }
+                                }
+                            }
+
+                            byte[] imageData = reader.ReadBytes(width * height * 3); // 3 bytes per pixel (RGB)
+
+                            Bitmap bitmap = new Bitmap(width, height);
+
+                            int index = 0;
+                            for (int y = 0; y < height; y++)
+                            {
+                                for (int x = 0; x < width; x++)
+                                {
+                                    byte red = imageData[index++];
+                                    byte green = imageData[index++];
+                                    byte blue = imageData[index++];
+                                    Color color = Color.FromArgb(red, green, blue);
+                                    bitmap.SetPixel(x, y, color);
+                                }
+                            }
+
+                            image = bitmap;
+                            originalImage = bitmap;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Invalid PPM format. Only P6 is supported.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading the image: " + ex.Message + ex.StackTrace, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void CreatePixel(string value, int width, int height, ref string r, ref string g, ref string b, ref int xLoc, ref int yLoc)
         {

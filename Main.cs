@@ -9,7 +9,7 @@ namespace Zad2
         private Button zoomInBtn;
         private Button zoomOutBtn;
         private Button zoomBackToNormalBtn;
-        private Label pixelInfoLabel;
+        private Label pixelViewerLabel;
         private Bitmap image;
         private Bitmap originalImage;
         private Bitmap onCreatingBitmap;
@@ -30,7 +30,7 @@ namespace Zad2
             pictureBox = new PictureBox();
             pictureBox.Dock = DockStyle.Fill;
             pictureBox.SizeMode = PictureBoxSizeMode.Normal;
-            pictureBox.MouseMove += PictureBox_MouseMove;
+            pictureBox.MouseMove += PixelViewerByMouseMove;
             loadingBox = new PictureBox();
             Image imageGif = Image.FromFile("Fountain.gif");
             loadingBox.Image = imageGif;
@@ -74,9 +74,9 @@ namespace Zad2
 
 
             // Inicjalizacja Label do wyświetlania informacji o pikselu
-            pixelInfoLabel = new Label();
-            pixelInfoLabel.Dock = DockStyle.Bottom;
-            pixelInfoLabel.TextAlign = ContentAlignment.MiddleCenter;
+            pixelViewerLabel = new Label();
+            pixelViewerLabel.Dock = DockStyle.Bottom;
+            pixelViewerLabel.TextAlign = ContentAlignment.MiddleCenter;
             pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
             pictureBox.Visible = true;
             pictureBox.Enabled = true;
@@ -85,7 +85,7 @@ namespace Zad2
             this.Controls.Add(zoomInBtn);
             this.Controls.Add(zoomOutBtn);
             this.Controls.Add(zoomBackToNormalBtn);
-            this.Controls.Add(pixelInfoLabel);
+            this.Controls.Add(pixelViewerLabel);
             this.Controls.Add(loadingBox);
             this.Controls.Add(openJPEGFile);
             this.Controls.Add(saveJPEGFile);
