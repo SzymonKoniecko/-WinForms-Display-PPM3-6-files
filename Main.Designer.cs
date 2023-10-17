@@ -9,6 +9,11 @@ namespace Zad2
 {
     partial class Main
     {
+        int xLoc = 0, yLoc = 0;
+        string r = "", g = "", b = "";
+        int width = 1;
+        int height = 1;
+        string filePath = "";
         private void PictureBox_MouseMove(object sender, MouseEventArgs e)
         {
             if (image == null) return;
@@ -19,71 +24,131 @@ namespace Zad2
             Color pixelColor = ((Bitmap)image).GetPixel(x, y);
             pixelInfoLabel.Text = $"Piksel ({x}, {y}) - R:{pixelColor.R}, G:{pixelColor.G}, B:{pixelColor.B}";
         }
-
-        private void openFileButton_Click(object sender, EventArgs e)
+        private void ChoosePpmFile(object sender, EventArgs e)
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Filter = "Pliki PPM P3 (*.ppm)|*.ppm";
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    Image imageGif = Image.FromFile("Fountain.gif");
-                    loadingBox.Image = imageGif;
-                    string filePath = openFileDialog.FileName;
+                    loadingBox.Visible = true;
+                    filePath = openFileDialog.FileName;
                     image = null;
                     originalImage = null;
-                    completedLoading = false;
-                    //loadingWorker.RunWorkerAsync();
-                    LoadPPM3(filePath);
-                    completedLoading = true;
-                    if (image != null)
-                    {
-                        pictureBox.Width = image.Width;
-                        pictureBox.Height = image.Height;
-                        pictureBox.Image = image;
-                        pictureBox.Dock = DockStyle.Fill;
-                        pictureBox.Invalidate();
-                        this.Invalidate();
-                    }
-                    else
-                    {
-                        MessageBox.Show("Cannot load PPM P3 file", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    loadingWorker.RunWorkerAsync();
                 }
             }
         }
-        private void DisplayLoadingGif(object sender, DoWorkEventArgs e)
+        private void StartLoadImage(object sender, DoWorkEventArgs e)
         {
-
-            Image imageGif = Image.FromFile("Fountain.gif");
-            loadingBox.Invoke(new Action(() =>
+            if (filePath.Contains("-p3"))
             {
-                loadingBox.Image = imageGif;
-            }));
+                LoadPPM3(filePath);
+            }
+            else if (filePath.Contains("-p6"))
+            {
+                LoadPPM6(filePath);
+            }
         }
-        private void HideLoadingGif(object? sender, RunWorkerCompletedEventArgs e)
+        private void RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (completedLoading)
+            if (e.Error != null)
             {
-                loadingBox.Visible = false;
-                loadingBox.Enabled = false;
-                loadingBox.Dispose();
-                loadingBox.Invalidate();
+                MessageBox.Show("Error on load image by thread" + e.Error.Message);
+            }
+            else
+            {
+                if (image != null)
+                {
+                    loadingBox.Visible = false;
+                    pictureBox.Width = image.Width;
+                    pictureBox.Height = image.Height;
+                    pictureBox.Image = image;
+                    pictureBox.Dock = DockStyle.Fill;
+                    pictureBox.Invalidate();
+                    this.Invalidate();
+                }
+                else
+                {
+                    MessageBox.Show("Cannot load PPM P3 file", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void ChooseJPEGFile(object? sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+        private void SaveJPEGFile(object? sender, EventArgs e)
+        {
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "JPEG Image|*.jpg";
+                if (originalImage == null)
+                {
+                    MessageBox.Show("Firstly the picture has to be generated!", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (!highQCompressionRadioBtn.Checked && !goodQCompressionRadioBtn.Checked && !lowQCompressionRadioBtn.Checked)
+                {
+                    MessageBox.Show("Select the type of compression!", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    string filePath = dialog.FileName;
+
+                    try
+                    {
+                        using (Bitmap bitmap = new Bitmap(originalImage))
+                        {
+                            ImageCodecInfo jpegCodec;
+                            foreach (ImageCodecInfo codec in ImageCodecInfo.GetImageEncoders())
+                            {
+                                if (codec.MimeType == "image/jpeg")
+                                {
+                                    jpegCodec = codec;
+                                    EncoderParameters encoderParams = new EncoderParameters(1);
+                                    if (highQCompressionRadioBtn.Checked)
+                                    {
+                                        encoderParams.Param[0] = new EncoderParameter(Encoder.Compression, 90);
+                                        bitmap.Save(filePath, jpegCodec, encoderParams);
+                                    }
+                                    else if (goodQCompressionRadioBtn.Checked)
+                                    {
+                                        encoderParams.Param[0] = new EncoderParameter(Encoder.Compression, 70);
+                                        bitmap.Save(filePath, jpegCodec, encoderParams);
+                                    }
+                                    else if (lowQCompressionRadioBtn.Checked)
+                                    {
+                                        encoderParams.Param[0] = new EncoderParameter(Encoder.Compression, 40);
+                                        bitmap.Save(filePath, jpegCodec, encoderParams);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Cannot save JPEG: " + ex.Message + ex.StackTrace);
+                    }
+                }
             }
         }
         private void LoadPPM3(string filePath)
         {
             string nextLine = "";
             int positionInArrayIndex = 0;
-            int xLoc = 0, yLoc = 0;
+            xLoc = 0; yLoc = 0;
+            r = ""; g = ""; b = "";
+            width = 1;
+            height = 1;
             try
             {
                 char[] splitParams = { ' ', '\n' , '\t'};
                 string[] fileData = new string[10];
-                string r = "", g = "", b = "";
-                int width = 1;
-                int height = 1;
-                Bitmap onCreatingBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+                onCreatingBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
                 using (StreamReader reader = new StreamReader(filePath))
                 {
                     bool startRegisterImage = false;
@@ -107,32 +172,7 @@ namespace Zad2
                                 {
                                     fileData[tmpIndex] = tmpFileData[i];
                                     tmpIndex++;
-                                    if (r == "")
-                                    {
-                                        r = tmpFileData[i];
-                                    }
-                                    else if (g == "")
-                                    {
-                                        g = tmpFileData[i];
-                                    }
-                                    else if (b == "")
-                                    {
-                                        b = tmpFileData[i];
-                                    }
-                                    else if (r != "" && g != "" && b != "")
-                                    {
-                                        if (xLoc < width)
-                                        {
-                                            onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                        }
-                                        else if (xLoc == width)
-                                        {
-                                            xLoc = 0;
-                                            onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                            yLoc++;
-                                        }
-                                        r = ""; g = ""; b = "";
-                                    }
+                                    CreatePixel(tmpFileData[i], width, height, ref r, ref g, ref b, ref xLoc, ref yLoc);
                                 }
                             }
                             startRegisterImage = true;
@@ -158,37 +198,7 @@ namespace Zad2
                                 {
                                     if (startRegisterImage)
                                     {
-                                        if (r == "")
-                                        {
-                                            r = splittedValidLine[i];
-                                        }
-                                        else if (g == "")
-                                        {
-                                            g = splittedValidLine[i];
-                                        }
-                                        else if (b == "")
-                                        {
-                                            b = splittedValidLine[i];
-                                        }
-                                        else if (r != "" && g != "" && b != "")
-                                        {
-                                            if (xLoc < width)
-                                            {
-                                                onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                                xLoc++;
-                                                if (xLoc == 5999)
-                                                {
-
-                                                }
-                                            }
-                                            else if (xLoc == width)
-                                            {
-                                                xLoc = 0;
-                                                onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                                yLoc++;
-                                            }
-                                            r = ""; g = ""; b = "";
-                                        }
+                                        CreatePixel(splittedValidLine[i], width, height, ref r, ref g, ref b, ref xLoc, ref yLoc);
                                     }
                                     else {
                                         fileData[positionInArrayIndex] = splittedValidLine[i];
@@ -206,37 +216,7 @@ namespace Zad2
                                 {
                                     if (startRegisterImage)
                                     {
-                                        if (r == "")
-                                        {
-                                            r = splittedValidLine[i];
-                                        }
-                                        else if (g == "")
-                                        {
-                                            g = splittedValidLine[i];
-                                        }
-                                        else if (b == "")
-                                        {
-                                            b = splittedValidLine[i];
-                                        }
-                                        else if (r != "" && g != "" && b != "")
-                                        {
-                                            if (xLoc < width)
-                                            {
-                                                onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                                xLoc++;
-                                                if (xLoc == 5999)
-                                                {
-
-                                                }
-                                            }
-                                            else if (xLoc == width)
-                                            {
-                                                xLoc = 0;
-                                                onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
-                                                yLoc++;
-                                            }
-                                            r = ""; g = ""; b = "";
-                                        }
+                                        CreatePixel(splittedValidLine[i], width, height, ref r, ref g, ref b, ref xLoc, ref yLoc);
                                     }
                                     else
                                     {
@@ -248,7 +228,7 @@ namespace Zad2
                         }
                     }
                 }
-                onCreatingBitmap.Save("output.bmp");
+                onCreatingBitmap.Save("output.bitmap");
                 image = onCreatingBitmap;
                 originalImage = image;
                 return;
@@ -259,50 +239,38 @@ namespace Zad2
                 return;
             }
         }
-        private void CreatePixel()
+        private void LoadPPM6(string filePath)
         {
-
+            throw new NotImplementedException();
         }
-        private void LoadPPM(string filePath)
+        private void CreatePixel(string value, int width, int height, ref string r, ref string g, ref string b, ref int xLoc, ref int yLoc)
         {
-            try
+            if (value.Equals("255") && !foundedIdBit)
             {
-                string[] splitParams = { " ", "\n" };
-                string line = "";
-                using (StreamReader reader = new StreamReader(filePath))
-                {
-                    string nextLine;
-                    while ((nextLine = reader.ReadLine()) != null)
-                    {
-                        if (!nextLine.Contains('#'))
-                        {
-                            line += nextLine + "\n";
-                        }
-                    }
-                }
-                string[] fileData = line.Split(splitParams, StringSplitOptions.RemoveEmptyEntries);
-                int width = int.Parse(fileData[1]);
-                int height = int.Parse(fileData[2]);
-                Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
-                int index = 3;
-                for (int y = 0; y < height; y++)
-                {
-                    for (int x = 0; x < width; x++)
-                    {
-                        Color color = Color.FromArgb(255, int.Parse(fileData[index]), int.Parse(fileData[index + 1]), int.Parse(fileData[index + 2]));
-                        index += 3;
-                        bitmap.SetPixel(x, y, color);
-                    }
-                }
-                bitmap.Save("output.bmp");
-                image = bitmap;
-                originalImage = image;
-                return;
+                foundedIdBit = true;
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                if (r == "")
+                {
+                    r = value;
+                }
+                else if (g == "")
+                {
+                    g = value;
+                }
+                else if (b == "")
+                {
+                    b = value;
+                    onCreatingBitmap.SetPixel(xLoc, yLoc, Color.FromArgb(int.Parse(r), int.Parse(g), int.Parse(b)));
+                    xLoc++;
+                    if (xLoc >= width)
+                    {
+                        xLoc = 0;
+                        yLoc++;
+                    }
+                    r = ""; g = ""; b = "";
+                }
             }
         }
         private void ZoomIn(object? sender, EventArgs e)
@@ -312,11 +280,14 @@ namespace Zad2
             {
                 originalImage = image;
             }
-            int newWidth = (int)(image.Width * 5);
-            int newHeight = (int)(image.Height * 5);
-
+            int newWidth = (int)(image.Width * 2);
+            int newHeight = (int)(image.Height * 2);
+            if (newWidth > 40000 || newHeight > 30000)
+            {
+                MessageBox.Show("Maximum zoom has been reached!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             image = new Bitmap(image, new Size(newWidth, newHeight));
-            image.Save($"zoomIN{newWidth}-{newHeight}.bmp");
             pictureBox.Width = newWidth;
             pictureBox.Height = newHeight;
             try
